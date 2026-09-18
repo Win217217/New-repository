@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>洗一次澡，8块钱</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{background:#0a0e14;color:#e8edf5;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow-x:hidden;}
+  body{max-width:640px;margin:0 auto;}
+
+  #progress{position:fixed;top:0;left:0;height:3px;width:0%;background:linear-gradient(90deg,#2f9bff,#00e0c6);z-index:999;transition:width .1s;}
+
+  section{padding:64px 22px;position:relative;}
+  .fade{opacity:0;transform:translateY(36px);transition:opacity .8s,transform .8s;}
+  .fade.show{opacity:1;transform:translateY(0);}
+  .tag{display:inline-block;font-size:11px;letter-spacing:2px;color:#00e0c6;border:1px solid rgba(0,224,198,.4);border-radius:20px;padding:4px 12px;margin-bottom:16px;}
+  h2{font-size:22px;line-height:1.5;margin-bottom:14px;font-weight:600;}
+  p{font-size:15px;line-height:1.9;color:#a8b5c7;margin-bottom:14px;}
+  .hl{color:#fff;font-weight:600;}
+
+  /* 封面 */
+  #cover{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 30px;background:radial-gradient(circle at 50% 30%,#12233d 0%,#0a0e14 70%);overflow:hidden;}
+  .drop{width:14px;height:20px;background:linear-gradient(180deg,#2f9bff,#00e0c6);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;margin-bottom:8px;animation:fall 2.2s ease-in infinite;}
+  @keyframes fall{0%{transform:translateY(-40px);opacity:0;}30%{opacity:1;}70%{transform:translateY(0);opacity:1;}100%{transform:translateY(8px);opacity:0;}}
+  #cover h1{font-size:40px;font-weight:800;line-height:1.2;margin:14px 0 12px;background:linear-gradient(120deg,#fff,#8fd0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  #cover .sub{font-size:15px;color:#8a9bb0;line-height:1.7;}
+  .scroll-hint{position:absolute;bottom:34px;font-size:12px;color:#5a6b80;animation:bob 1.6s infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
+
+  /* ===== 交互1：滑动解锁账单 ===== */
+  .swipe-box{position:relative;height:230px;border-radius:16px;overflow:hidden;margin-top:16px;background:linear-gradient(160deg,#141c28,#0f1621);border:1px solid #1e2a3a;}
+  .swipe-cover{position:absolute;inset:0;background:linear-gradient(160deg,#182233,#0f1621);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;transition:transform .6s cubic-bezier(.4,0,.2,1);cursor:pointer;}
+  .swipe-cover.gone{transform:translateX(-100%);}
+  .swipe-cover .lock{font-size:34px;margin-bottom:12px;animation:shake 1.6s infinite;}
+  @keyframes shake{0%,100%{transform:rotate(0);}25%{transform:rotate(-12deg);}75%{transform:rotate(12deg);}}
+  .swipe-cover .txt{font-size:14px;color:#8a9bb0;}
+  .swipe-cover .arrow{margin-top:14px;font-size:22px;color:#00e0c6;animation:slide 1.4s infinite;}
+  @keyframes slide{0%,100%{transform:translateX(-8px);}50%{transform:translateX(8px);}}
+  .bill-inner{padding:20px;height:100%;overflow-y:auto;}
+  .bill-row{display:flex;justify-content:space-between;font-size:14px;padding:9px 0;border-bottom:1px dashed #1e2a3a;}
+  .bill-row:last-child{border:none;}
+  .bill-row .k{color:#8a9bb0;}
+  .bill-row .v{color:#fff;font-weight:600;}
+  .bill-total .v{color:#ff6b6b;font-size:20px;}
+
+  /* ===== 交互2：计费模拟器 ===== */
+  .sim{margin-top:24px;background:#111a26;border-radius:16px;padding:22px;border:1px solid #1e2a3a;}
+  .sim label{font-size:13px;color:#8a9bb0;display:block;margin-bottom:10px;}
+  .sim input[type=range]{width:100%;-webkit-appearance:none;height:6px;border-radius:6px;background:#1e2a3a;outline:none;}
+  .sim input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#2f9bff,#00e0c6);box-shadow:0 0 12px rgba(47,155,255,.6);}
+  .sim .out{display:flex;justify-content:space-between;margin-top:16px;}
+  .sim .out .big{font-size:30px;font-weight:800;color:#2f9bff;}
+  .sim .out .big.red{color:#ff6b6b;}
+  .sim .out small{font-size:12px;color:#5a6b80;display:block;}
+
+  /* ===== 交互3：点击切换高校 ===== */
+  .tabs{display:flex;gap:8px;margin:16px 0;overflow-x:auto;padding-bottom:4px;}
+  .tab{flex:0 0 auto;padding:9px 16px;border-radius:20px;font-size:13px;background:#131c28;color:#8a9bb0;border:1px solid #1e2a3a;transition:.25s;cursor:pointer;}
+  .tab.on{background:linear-gradient(90deg,#2f9bff,#00e0c6);color:#04121f;font-weight:700;border-color:transparent;}
+  .panel{background:#111a26;border-radius:16px;padding:20px;border:1px solid #1e2a3a;min-height:180px;}
+  .panel .school{font-size:16px;color:#fff;font-weight:600;margin-bottom:4px;}
+  .panel .price{font-size:34px;font-weight:800;color:#ff6b6b;margin:8px 0;}
+  .panel .price small{font-size:13px;color:#5a6b80;font-weight:400;}
+  .panel .desc{font-size:13px;color:#a8b5c7;line-height:1.8;}
+
+  /* ===== 交互4：拖拽时间轴 ===== */
+  .drag-wrap{position:relative;margin-top:24px;height:8px;background:#1a2433;border-radius:8px;}
+  .drag-fill{position:absolute;left:0;top:0;height:100%;width:0;background:linear-gradient(90deg,#2f9bff,#00e0c6);border-radius:8px;}
+  .drag-handle{position:absolute;top:50%;left:0;width:30px;height:30px;margin-left:-15px;margin-top:-15px;border-radius:50%;background:linear-gradient(135deg,#2f9bff,#00e0c6);box-shadow:0 0 16px rgba(47,155,255,.7);cursor:grab;touch-action:none;}
+  .drag-card{margin-top:28px;background:#111a26;border-radius:14px;padding:20px;border:1px solid #1e2a3a;min-height:120px;}
+  .drag-card .t{font-size:12px;color:#00e0c6;letter-spacing:1px;margin-bottom:8px;}
+  .drag-card .d{font-size:14px;color:#dbe5f0;line-height:1.8;}
+
+  /* ===== 交互5：投票 ===== */
+  .vote-btn{display:block;width:100%;text-align:left;padding:16px 18px;margin-bottom:12px;border-radius:12px;background:#111a26;border:1px solid #1e2a3a;color:#dbe5f0;font-size:14px;transition:.25s;cursor:pointer;position:relative;overflow:hidden;}
+  .vote-btn.on{border-color:#00e0c6;background:#0f2230;}
+  .vote-btn .bar{position:absolute;left:0;top:0;height:100%;width:0;background:rgba(47,155,255,.16);transition:width .8s;}
+  .vote-btn .row{position:relative;display:flex;justify-content:space-between;z-index:2;}
+  .vote-btn .pct{color:#00e0c6;font-weight:700;opacity:0;transition:opacity .4s;}
+  .vote-btn .pct.show{opacity:1;}
+
+  /* ===== 交互6：弹幕留言墙 ===== */
+  .dm-stage{position:relative;height:260px;background:#0d141e;border-radius:16px;border:1px solid #1e2a3a;overflow:hidden;margin-top:16px;}
+  .dm{position:absolute;white-space:nowrap;font-size:13px;padding:6px 12px;border-radius:16px;background:rgba(47,155,255,.14);color:#bcd8ff;animation:dmrun linear forwards;}
+  @keyframes dmrun{from{transform:translateX(100%);}to{transform:translateX(-110%);}}
+  .dm-input{display:flex;gap:8px;margin-top:14px;}
+  .dm-input input{flex:1;background:#111a26;border:1px solid #1e2a3a;border-radius:12px;padding:12px 14px;color:#fff;font-size:14px;outline:none;}
+  .dm-input input:focus{border-color:#2f9bff;}
+  .dm-input button{padding:0 20px;border-radius:12px;border:none;background:linear-gradient(90deg,#2f9bff,#00e0c6);color:#04121f;font-weight:700;font-size:14px;cursor:pointer;}
+
+  /* ===== 交互7：洗澡计时器 ===== */
+  .timer-box{text-align:center;background:#111a26;border-radius:16px;padding:26px;border:1px solid #1e2a3a;margin-top:16px;}
+  .timer-num{font-size:52px;font-weight:800;color:#2f9bff;font-variant-numeric:tabular-nums;letter-spacing:2px;}
+  .timer-num.run{color:#00e0c6;}
+  .timer-cost{font-size:15px;color:#ff6b6b;font-weight:700;margin-top:6px;}
+  .timer-btns{display:flex;gap:12px;justify-content:center;margin-top:18px;}
+  .timer-btns button{flex:1;max-width:130px;padding:13px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;}
+  .t-start{background:linear-gradient(90deg,#2f9bff,#00e0c6);color:#04121f;}
+  .t-reset{background:#1a2433;color:#8a9bb0;}
+
+  /* ===== 海报生成 ===== */
+  .poster{background:linear-gradient(160deg,#12233d,#0a0e14);border:1px solid #1e2a3a;border-radius:16px;padding:24px;margin-top:20px;text-align:center;}
+  .poster .p-title{font-size:20px;font-weight:800;color:#fff;margin-bottom:6px;}
+  .poster .p-num{font-size:46px;font-weight:800;background:linear-gradient(120deg,#2f9bff,#00e0c6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0;}
+  .poster .p-sub{font-size:13px;color:#8a9bb0;line-height:1.7;}
+
+  #end{background:linear-gradient(180deg,#0a0e14,#0d1a2b);text-align:center;}
+  .end-box{background:#111a26;border:1px solid #1e2a3a;border-radius:16px;padding:24px;margin-top:20px;text-align:left;}
+  .end-box h3{font-size:16px;color:#00e0c6;margin-bottom:10px;}
+  .btn{display:inline-block;margin-top:24px;padding:14px 36px;border-radius:30px;background:linear-gradient(90deg,#2f9bff,#00e0c6);color:#04121f;font-weight:700;font-size:15px;border:none;cursor:pointer;}
+  .foot{font-size:11px;color:#3d4b5c;margin-top:30px;line-height:1.8;}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- 1 封面 -->
+<section id="cover">
+  <div class="drop"></div>
+  <div class="tag">H5 融合新闻</div>
+  <h1>洗一次澡<br>8块钱</h1>
+  <p class="sub">当洗澡按秒计费、开水按升收钱<br>高校后勤的公益底线，正在被谁改写？</p>
+  <div class="scroll-hint">↓ 向上滑动</div>
+</section>
+
+<!-- 2 滑动解锁账单 -->
+<section class="fade">
+  <div class="tag">交互 · 滑动解锁</div>
+  <h2>一个女生的洗澡账本</h2>
+  <p>向右滑动解锁，看看这笔钱是怎么花出去的。</p>
+  <div class="swipe-box">
+    <div class="swipe-cover" id="swipeCover">
+      <div class="lock">🔒</div>
+      <div class="txt">向右滑动，查看账单</div>
+      <div class="arrow">→ → →</div>
+    </div>
+    <div class="bill-inner">
+      <div class="bill-row"><span class="k">洗头 + 护发</span><span class="v">约 12 分钟</span></div>
+      <div class="bill-row"><span class="k">计费标准</span><span class="v">0.48 元/分钟</span></div>
+      <div class="bill-row"><span class="k">单次花费</span><span class="v">5.76 元</span></div>
+      <div class="bill-row"><span class="k">每月（隔天洗）</span><span class="v">约 86 元</span></div>
+      <div class="bill-row bill-total"><span class="k">一学期（4个月）</span><span class="v">≈ 345 元</span></div>
+    </div>
+  </div>
+
+  <!-- 交互 计时器 -->
+  <div class="timer-box">
+    <div class="timer-num" id="timerNum">00:00</div>
+    <div class="timer-cost">已花费 ¥<span id="timerCost">0.00</span></div>
+    <div class="timer-btns">
+      <button class="t-start" id="tStart">开始洗澡</button>
+      <button class="t-reset" id="tReset">重置</button>
+    </div>
+    <p style="font-size:12px;color:#5a6b80;margin:14px 0 0">按 0.48 元/分钟实时计费，感受一下“秒秒都在花钱”</p>
+  </div>
+
+  <!-- 交互 模拟器 -->
+  <div class="sim">
+    <label>拖动滑块，估算你的月度洗澡开销 →</label>
+    <input type="range" id="min" min="3" max="20" value="10">
+    <div class="out">
+      <div><span class="big" id="minOut">10</span><small>分钟 / 次</small></div>
+      <div style="text-align:right"><span class="big red" id="costOut">4.8</span><small>元 / 次</small></div>
+    </div>
+    <p style="font-size:12px;color:#5a6b80;margin-top:14px;margin-bottom:0">
+      按 0.48 元/分钟计 · 每月 15 次：<span id="monthOut" style="color:#ff6b6b;font-weight:700">72</span> 元
+    </p>
+  </div>
+</section>
+
+<!-- 3 点击切换高校 -->
+<section class="fade">
+  <div class="tag">交互 · 点击对比</div>
+  <h2>同样的热水，不同的价格</h2>
+  <p>点击标签，切换查看不同高校的洗浴计费标准。</p>
+  <div class="tabs" id="tabs">
+    <div class="tab on" data-i="0">成都师范学院</div>
+    <div class="tab" data-i="1">河南农业大学</div>
+    <div class="tab" data-i="2">山西医科大学</div>
+    <div class="tab" data-i="3">天津大学（补贴）</div>
+  </div>
+  <div class="panel" id="panel">
+    <div class="school"></div>
+    <div class="price"></div>
+    <div class="desc"></div>
+  </div>
+</section>
+
+<!-- 4 拖拽时间轴 -->
+<section class="fade">
+  <div class="tag">交互 · 拖动时间轴</div>
+  <h2>“开学即开业”</h2>
+  <p>拖动滑块，查看变化是如何发生的。</p>
+  <div class="drag-wrap">
+    <div class="drag-fill" id="dragFill"></div>
+    <div class="drag-handle" id="dragHandle"></div>
+  </div>
+  <div class="drag-card" id="dragCard">
+    <div class="t"></div>
+    <div class="d"></div>
+  </div>
+</section>
+
+<!-- 5 投票 -->
+<section class="fade">
+  <div class="tag">交互 · 投票表态</div>
+  <h2>你怎么看？</h2>
+  <p>点击你的选择，看看其他人的态度。</p>
+  <div id="voteBox">
+    <button class="vote-btn" data-i="0"><span class="bar"></span><span class="row"><span>洗澡属于基本生活保障，不该商业化</span><span class="pct"></span></span></button>
+    <button class="vote-btn" data-i="1"><span class="bar"></span><span class="row"><span>可以收费，但必须按成本定价、公开透明</span><span class="pct"></span></span></button>
+    <button class="vote-btn" data-i="2"><span class="bar"></span><span class="row"><span>市场化没问题，学校不该管太多</span><span class="pct"></span></span></button>
+  </div>
+  <p id="voteTip" style="font-size:13px;color:#5a6b80;margin-top:14px"></p>
+</section>
+
+<!-- 6 弹幕留言墙 -->
+<section class="fade">
+  <div class="tag">交互 · 弹幕留言</div>
+  <h2>说说你们学校的洗澡价格</h2>
+  <div class="dm-stage" id="dmStage"></div>
+  <div class="dm-input">
+    <input id="dmInput" maxlength="24" placeholder="例如：我们学校 5 分钟 3 块…">
+    <button id="dmSend">发送</button>
+  </div>
+</section>
+
+<!-- 7 结尾 + 海报 -->
+<section id="end" class="fade">
+  <div class="tag">生成你的账单</div>
+  <h2>高校后勤是保障，不是生意</h2>
+  <div class="poster" id="poster">
+    <div class="p-title">我的洗澡账单</div>
+    <div class="p-num" id="pNum">¥72</div>
+    <div class="p-sub" id="pSub">每月 15 次 · 每次 10 分钟 · 0.48 元/分钟</div>
+  </div>
+  <button class="btn" id="genPoster">生成我的账单</button>
+
+  <div class="end-box" style="margin-top:26px">
+    <h3>已经做到的学校，证明了什么？</h3>
+    <p style="margin-bottom:0">天津大学每年给新生发放 150 元直饮水补贴；华中科技大学直接打 50 元开水补贴到校园卡；南京航空航天大学改造直饮水时保留免费开水炉。保障基本、放开增值——既应该做，也可以做到。</p>
+  </div>
+  <p style="margin-top:24px">当一名学生需要为了洗一次澡反复比较校外健身房会员费和校内水卡余额时，大学就已经在教给他一课——只是这一课，与立德树人无关。</p>
+  <button class="btn" onclick="shareIt()">转发，让更多人看见</button>
+  <p class="foot">H5 融合新闻 · 数据来源于公开报道<br>内容仅供传播讨论，不代表任何机构立场</p>
+</section>
+
+<script>
+/* 进度条 */
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  document.getElementById('progress').style.width=(window.scrollY/h*100)+'%';
+});
+
+/* 入场动画 */
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('show');});
+},{threshold:.15});
+document.querySelectorAll('.fade').forEach(el=>io.observe(el));
+
+/* ===== 交互1：滑动解锁 ===== */
+(function(){
+  const cover=document.getElementById('swipeCover');
+  let sx=0,moving=false;
+  const start=x=>{sx=x;moving=true;};
+  const move=x=>{
+    if(!moving)return;
+    const d=x-sx;
+    if(d>0)cover.style.transform=`translateX(${Math.min(d,200)}px)`;
+    if(d>110){cover.classList.add('gone');cover.style.transform='';moving=false;}
+  };
+  const end=()=>{moving=false;if(!cover.classList.contains('gone'))cover.style.transform='';};
+  cover.addEventListener('touchstart',e=>start(e.touches[0].clientX));
+  cover.addEventListener('touchmove',e=>move(e.touches[0].clientX));
+  cover.addEventListener('touchend',end);
+  cover.addEventListener('mousedown',e=>start(e.clientX));
+  window.addEventListener('mousemove',e=>move(e.clientX));
+  window.addEventListener('mouseup',end);
+})();
+
+/* ===== 交互2：计费模拟器 ===== */
+const min=document.getElementById('min');
+let curMin=10;
+function updateSim(){
+  curMin=+min.value;
+  const cost=(curMin*0.48).toFixed(1);
+  document.getElementById('minOut').textContent=curMin;
+  document.getElementById('costOut').textContent=cost;
+  document.getElementById('monthOut').textContent=(cost*15).toFixed(0);
+}
+min.addEventListener('input',updateSim);
+updateSim();
+
+/* ===== 交互3：点击切换高校 ===== */
+const schoolData=[
+  {n:'成都师范学院',p:'1 元',u:'/ 100 秒',d:'折合 0.6 元/分钟。学生反映“洗个头就要六七元”，单次洗浴普遍超过 5 元。'},
+  {n:'河南农业大学',p:'3-7 元',u:'/ 次',d:'新浴室按流量计费，每升热水 0.045 元。旧浴室不到 2 元，价差 3 倍以上，且新浴室无法调节水流量。'},
+  {n:'山西医科大学',p:'0.48 元',u:'/ 分钟',d:'迎泽校区计费标准。学生实测 10 分钟约 5 元，长头发女生单次超 10 元。舆论发酵后仅中都校区下调至 0.3 元/分钟。'},
+  {n:'天津大学',p:'150 元',u:'/ 年补贴',d:'每年给新生发放直饮水补贴。对比之下，部分高校选择“保障基本、放开增值”，证明公益与效率并非不能兼得。'}
+];
+const tabs=document.querySelectorAll('.tab');
+const panel=document.getElementById('panel');
+function renderSchool(i){
+  const s=schoolData[i];
+  panel.querySelector('.school').textContent=s.n;
+  panel.querySelector('.price').innerHTML=`${s.p}<small>${s.u}</small>`;
+  panel.querySelector('.desc').textContent=s.d;
+  panel.style.opacity=0;
+  setTimeout(()=>panel.style.opacity=1,80);
+}
+panel.style.transition='opacity .3s';
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');
+  renderSchool(+t.dataset.i);
+}));
+renderSchool(0);
+
+/* ===== 交互4：拖拽时间轴 ===== */
+const tlData=[
+  {t:'学期末',d:'旧浴室正常运营，按分钟计费，价格低廉；免费开水房仍在。'},
+  {t:'暑假期间',d:'浴室改造，引入第三方企业，安装扫码计费系统。'},
+  {t:'开学第一天',d:'新浴室启用，价格翻倍；免费开水房悄然关停。'},
+  {t:'开学一周内',d:'学生社交平台集中吐槽，话题登上热搜。'},
+  {t:'舆论发酵后',d:'校方回应“近期下调”，但部分校区价格“没有变”。'}
+];
+const wrap=document.querySelector('.drag-wrap');
+const handle=document.getElementById('dragHandle');
+const fill=document.getElementById('dragFill');
+const card=document.getElementById('dragCard');
+let dragging=false;
+function setPos(clientX){
+  const r=wrap.getBoundingClientRect();
+  let p=(clientX-r.left)/r.width;
+  p=Math.max(0,Math.min(1,p));
+  const idx=Math.min(tlData.length-1,Math.floor(p*tlData.length));
+  const seg=p*tlData.length-idx;
+  handle.style.left=(p*100)+'%';
+  fill.style.width=(p*100)+'%';
+  card.querySelector('.t').textContent=tlData[idx].t;
+  card.querySelector('.d').textContent=tlData[idx].d;
+}
+handle.addEventListener('touchstart',e=>{dragging=true;});
+handle.addEventListener('mousedown',e=>{dragging=true;});
+window.addEventListener('touchmove',e=>{if(dragging){setPos(e.touches[0].clientX);e.preventDefault();}},{passive:false});
+window.addEventListener('mousemove',e=>{if(dragging)setPos(e.clientX);});
+window.addEventListener('touchend',()=>dragging=false);
+window.addEventListener('mouseup',()=>dragging=false);
+wrap.addEventListener('click',e=>setPos(e.clientX));
+setPos(wrap.getBoundingClientRect().left);
+
+/* ===== 交互5：投票 ===== */
+const voteData=[
+  {base:1247,add:0},
+  {base:986,add:0},
+  {base:73,add:0}
+];
+let voted=false;
+const voteBtns=document.querySelectorAll('.vote-btn');
+voteBtns.forEach(b=>b.addEventListener('click',()=>{
+  if(voted){document.getElementById('voteTip').textContent='你已经投过票啦';return;}
+  voted=true;
+  const i=+b.dataset.i;
+  voteData[i].add=1;
+  b.classList.add('on');
+  const total=voteData.reduce((s,v)=>s+v.base+v.add,0);
+  voteBtns.forEach((x,j)=>{
+    const pct=((voteData[j].base+voteData[j].add)/total*100).toFixed(1);
+    x.querySelector('.bar').style.width=pct+'%';
+    const p=x.querySelector('.pct');
+    p.textContent=pct+'%';
+    p.classList.add('show');
+  });
+  document.getElementById('voteTip').textContent='感谢参与，结果已实时更新';
+}));
+
+/* ===== 交互6：弹幕留言墙 ===== */
+const stage=document.getElementById('dmStage');
+const preset=['我们学校5分钟3块','洗不起澡，去健身房办了卡','水小得像眼泪还扣钱','希望学校能公开成本','开学就涨价，谁给的权力'];
+function shoot(text,delay=0){
+  setTimeout(()=>{
+    const d=document.createElement('div');
+    d.className='dm';
+    d.textContent=text;
+    d.style.top=(10+Math.random()*200)+'px';
+    const dur=6+Math.random()*4;
+    d.style.animationDuration=dur+'s';
+    stage.appendChild(d);
+    setTimeout(()=>d.remove(),dur*1000);
+  },delay);
+}
+preset.forEach((t,i)=>shoot(t,i*900));
+setInterval(()=>{
+  if(stage.children.length<6)shoot(preset[Math.floor(Math.random()*preset.length)]);
+},2600);
+document.getElementById('dmSend').addEventListener('click',()=>{
+  const inp=document.getElementById('dmInput');
+  const v=inp.value.trim();
+  if(!v)return;
+  shoot(v);
+  inp.value='';
+});
+document.getElementById('dmInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter')document.getElementById('dmSend').click();
+});
+
+/* ===== 交互7：洗澡计时器 ===== */
+let sec=0,timer=null;
+const tNum=document.getElementById('timerNum');
+const tCost=document.getElementById('timerCost');
+function fmt(s){
+  const m=String(Math.floor(s/60)).padStart(2,'0');
+  const ss=String(s%60).padStart(2,'0');
+  return m+':'+ss;
+}
+document.getElementById('tStart').addEventListener('click',function(){
+  if(timer){
+    clearInterval(timer);timer=null;
+    this.textContent='继续';
+    tNum.classList.remove('run');
+  }else{
+    this.textContent='暂停';
+    tNum.classList.add('run');
+    timer=setInterval(()=>{
+      sec++;
+      tNum.textContent=fmt(sec);
+      tCost.textContent=(sec/60*0.48).toFixed(2);
+    },1000);
+  }
+});
+document.getElementById('tReset').addEventListener('click',()=>{
+  clearInterval(timer);timer=null;sec=0;
+  tNum.textContent='00:00';tNum.classList.remove('run');
+  tCost.textContent='0.00';
+  document.getElementById('tStart').textContent='开始洗澡';
+});
+
+/* ===== 生成个人账单海报 ===== */
+document.getElementById('genPoster').addEventListener('click',()=>{
+  const m=curMin;
+  const cost=(m*0.48).toFixed(2);
+  const month=(cost*15).toFixed(0);
+  document.getElementById('pNum').textContent='¥'+month;
+  document.getElementById('pSub').textContent=`每月 15 次 · 每次 ${m} 分钟 · 0.48 元/分钟`;
+  document.getElementById('poster').style.transform='scale(1.03)';
+  setTimeout(()=>document.getElementById('poster').style.transform='scale(1)',200);
+});
+
+/* 分享 */
+function shareIt(){
+  const txt='洗一次澡8块钱？高校后勤的公益底线去哪了';
+  if(navigator.share){
+    navigator.share({title:'洗一次澡，8块钱',text:txt,url:location.href});
+  }else{
+    navigator.clipboard?.writeText(txt+' '+location.href);
+    alert('链接已复制，去粘贴分享吧');
+  }
+}
+</script>
+</body>
+</html>
